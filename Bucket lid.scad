@@ -1,5 +1,7 @@
-bucket_outer_diameter = 314;
-bucket_inner_diameter = 284;
+// default 5-gal bucket outer
+bucket_outer_diameter = 303;
+// default 5-gal bucket inner
+bucket_inner_diameter = 285;
 
 //lip over the edge thickness
 lip_overhang = 5;
@@ -20,13 +22,18 @@ screw_hole_diameter = 6;
 access_holes = 2;
 access_angles = [for( i = [0 : brace_every : 359] ) i + brace_every / 2];
 
-// embed the 40mm spacer from the modular hydro tower in the center
-include_spacer = true;
 // one object, no petals
 render_whole_lid = false;
+// embed the 40mm spacer from the modular hydro tower in the center
+include_spacer = true;
+// embed the latch knobs for the hydro tower caps in the access holes
+include_access_latch = true;
+
 
 // ignored if include_spacer is true
 center_hole_diameter = 50;
+// ignored if include_access_latch is true
+access_latch_diameter = 50;
 
 material_height = max(lid_thickness, brace_height) + lip_height;
 bucket_wall_thickness = bucket_outer_diameter - bucket_inner_diameter;
@@ -44,13 +51,15 @@ petal_ring_dimensions = [
     petal_ring_cutout_dimensions[0] - petal_ring_correction, 
     petal_ring_cutout_dimensions[2]
 ];
-petal_placement = (bucket_inner_diameter - petal_ring_dimensions[0] - lip_overhang) / 2;
+access_diameter = include_access_latch ? petal_ring_dimensions[0] : access_latch_diameter;
+petal_placement = (bucket_inner_diameter - access_diameter - lip_overhang) / 2;
+
 
 $fa = 3;
 
 if (!render_whole_lid) {
     for (petal = [0 : len(brace_angles) - 1]) {
-        //get each petal out of the way of the others (split to object/autoarrange in the slicer)
+        //get each petal out of the way of the others (split to object then autoarrange in the slicer)
         translate([petal * bucket_outer_diameter * 1.5, 0, 0])
         intersection() {
             lid_with_holes();
@@ -72,7 +81,7 @@ module lid_with_holes() {
             for(angle_index = [0 : len(access_angles) - 1]) {
                 if (angle_index < access_holes)
                     rotate_to_midpoint(access_angles[angle_index], petal_placement)
-                        cylinder(h = material_height, d = petal_ring_dimensions[0]);
+                        cylinder(h = material_height, d = access_diameter);
             }
         }
 
@@ -177,16 +186,18 @@ module inner_reinforcement_ring(height, outer_diameter, inner_diameter) {
 
 module petal_ring(scale = 1) {
     union() {
-        difference() {
-            translate([-.2, .3, 0])
-                translate([-petal_ring_cutout_dimensions[0] / 2, -petal_ring_cutout_dimensions[1] / 2, 0])
-                petal_ring_cutout();
-            ring(petal_ring_dimensions[2], petal_ring_dimensions[0] * 2, petal_ring_dimensions[0]);
+        if (include_access_latch) {
+            difference() {
+                translate([-.2, .3, 0])
+                    translate([-petal_ring_cutout_dimensions[0] / 2, -petal_ring_cutout_dimensions[1] / 2, 0])
+                    petal_ring_cutout();
+                ring(petal_ring_dimensions[2], petal_ring_dimensions[0] * 2, petal_ring_dimensions[0]);
+            }
         }
         ring(
             lid_thickness + lip_height,
-            petal_ring_dimensions[0] + lip_overhang,
-            petal_ring_dimensions[0] - 0.01 // encroach slightly
+            access_diameter + lip_overhang,
+            access_diameter - 0.01 // encroach slightly
         );
     }
 }
